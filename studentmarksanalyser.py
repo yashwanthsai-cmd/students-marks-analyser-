@@ -14,37 +14,56 @@ def get_grade(avg):
 
 
 def is_valid_number(value):
-    """Checks if value is a valid integer."""
-    try:
-        int(value)
-        return True
-    except:
+    """
+    Checks whether value is a valid integer.
+    Handles cases like: "", " ", None, "N/A", "--", "abc", "78.5"
+    """
+    if value is None:
         return False
+
+    value = value.strip()
+
+    if value == "":
+        return False
+
+    # Marks should be integers only (not floats)
+    if not value.isdigit():
+        return False
+
+    return True
 
 
 def run_analysis(filename="students.csv"):
-    # Read CSV file
     data = []
+
     with open(filename, "r") as file:
         reader = csv.DictReader(file)
+
         for row in reader:
 
-            # Skip rows with missing name or subject
-            if row["Name"] == "" or row["Subject"] == "":
+            # Ensure required keys exist
+            if "Name" not in row or "Subject" not in row or "Marks" not in row:
                 continue
 
-            # Skip rows with invalid or empty marks
-            if not is_valid_number(row["Marks"]):
+            name = row["Name"].strip()
+            subject = row["Subject"].strip()
+            marks = row["Marks"]
+
+            # Skip rows with empty name or subject
+            if name == "" or subject == "":
                 continue
 
-            # Convert marks to integer
-            row["Marks"] = int(row["Marks"])
+            # Validate marks
+            if not is_valid_number(marks):
+                continue
+
+            row["Marks"] = int(marks)
             data.append(row)
 
     if len(data) == 0:
         raise ValueError("CSV contains no valid rows.")
 
-    # Dictionary to store marks per student
+    # Store marks grouped by student
     student_marks = {}
 
     for row in data:
@@ -53,36 +72,36 @@ def run_analysis(filename="students.csv"):
 
         if name not in student_marks:
             student_marks[name] = []
+
         student_marks[name].append(marks)
 
-    # Calculate average and grade per student
+    # Avg + Grade per student
     student_avg = {}
-
     for name, marks_list in student_marks.items():
         avg = sum(marks_list) / len(marks_list)
         grade = get_grade(avg)
         student_avg[name] = [avg, grade]
 
-    # Sort by highest average
+    # Sorting
     sorted_students = sorted(student_avg.items(), key=lambda x: x[1][0], reverse=True)
 
     # Top 3
     top3 = sorted_students[:3]
 
-    # Highest & lowest marks overall
+    # Overall statistics
     all_marks = [row["Marks"] for row in data]
     highest = max(all_marks)
     lowest = min(all_marks)
     overall_avg = sum(all_marks) / len(all_marks)
 
-    # Save cleaned data
+    # Save cleaned CSV
     with open("students_cleaned.csv", "w", newline="") as file:
         writer = csv.writer(file)
         writer.writerow(["Name", "Avg Marks", "Grade"])
         for name, details in sorted_students:
             writer.writerow([name, round(details[0], 2), details[1]])
 
-    # Build return message (for GUI)
+    # Build output result for GUI or CLI
     result = "=== Student Marks Analyzer ===\n\n"
     result += "Average Marks of Each Student:\n"
     for name, details in student_avg.items():
@@ -102,6 +121,6 @@ def run_analysis(filename="students.csv"):
     return result
 
 
-# Allow standalone running (no GUI)
+# For CLI use
 if __name__ == "__main__":
     print(run_analysis())
